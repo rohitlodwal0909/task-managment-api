@@ -8,7 +8,7 @@ const authenticate = require("../middlewares/auth");
 
 const { loginLimiter } = require("../middlewares/rateLimiter");
 
-const { registerSchema, loginSchema } = require("../validators/authValidator");
+const { registerSchema, loginSchema } = require("../validators/auth");
 
 const router = express.Router();
 
