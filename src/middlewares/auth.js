@@ -1,36 +1,34 @@
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const asyncHandler = require("../utils/asyncHandler");
+const AppError = require("../utils/appError");
+const { verifyToken } = require("../utils/jwt");
 
-// const AppError = require()
+function authenticate(req, res, next) {
+  const authorization = req.headers.authorization;
 
-const auth = async (req, res, next) => {
+  if (!authorization || !authorization.startsWith("Bearer ")) {
+    return next(
+      new AppError("Authentication token is required", 401, "UNAUTHORIZED"),
+    );
+  }
+
+  const token = authorization.split(" ")[1];
+
   try {
-    const header = req.headers.authorization;
+    const payload = verifyToken(token);
 
-    if (!header || !header.startWith("Bearer ")) {
-      return res.status(401).json({
-        success: false,
-        message: "Authetication required",
-      });
-    }
-    const token = header.split(" ")[1];
-    const decode = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decode.id).select("_id name email");
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: "user not found",
-      });
-    }
-    req.user = user;
+    req.user = {
+      id: payload.sub,
+    };
+
     next();
   } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: "Invalid or expires token",
-    });
+    return next(
+      new AppError(
+        "Invalid or expired authentication token",
+        401,
+        "UNAUTHORIZED",
+      ),
+    );
   }
-};
+}
 
-module.exports = auth;
+module.exports = authenticate;

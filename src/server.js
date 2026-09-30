@@ -1,20 +1,37 @@
-const dotenv = require("dotenv");
-dotenv.config();
-
 const app = require("./app");
-const connectDb = require("./config/db");
-const mongoose = require("mongoose");
 
-const startServer = async () => {
+const connectDB = require("./config/db");
+
+const { port } = require("./config/env");
+
+async function startServer() {
   try {
-    await connectDb();
-    const server = app.listen(process.env.PORT, () => {
-      console.log(`Server running on PORT ` + process.env.PORT);
+    await connectDB();
+
+    const server = app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
     });
+
+    const shutdown = async (signal) => {
+      console.log(`${signal} received. Shutting down...`);
+
+      server.close(async () => {
+        const mongoose = require("mongoose");
+
+        await mongoose.connection.close();
+
+        process.exit(0);
+      });
+    };
+
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+    process.on("SIGINT", () => shutdown("SIGINT"));
   } catch (error) {
-    console.log("Failed to start server", error.message);
+    console.error("Server startup failed:", error.message);
+
     process.exit(1);
   }
-};
+}
 
 startServer();

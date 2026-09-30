@@ -1,204 +1,56 @@
-const jwt = require("jsonwebtoken");
+const taskService = require("../services/taskService");
 
-const Task = require("../models/Task");
-const {
-  createTaskValidation,
-  updateTaskValidation,
-} = require("../validators/task");
-const { title } = require("node:process");
-const { default: mongoose } = require("mongoose");
+const { success } = require("../utils/apiResponse");
 
-const createTask = async (req, res, next) => {
-  try {
-    const { error, value } = createTaskValidation.validate(req.body);
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.details(0).message,
-      });
-    }
+async function create(req, res) {
+  const task = await taskService.createTask(req.user.id, req.body);
 
-    const { name, email, password } = req.body;
+  return success(res, 201, "Task created successfully", {
+    id: task._id,
+    title: task.title,
+    status: task.status,
+    priority: task.priority,
+  });
+}
 
-    const task = await Task.create({
-      ...value,
-      user: req.user._id,
-    });
+async function list(req, res) {
+  const result = await taskService.listTasks(req.user.id, req.query);
 
-    return res.status(201).json({
-      success: true,
-      message: "Task created successfully",
-      data: {
-        user: {
-          id: task._id,
-          title: user.title,
-          status: user.status,
-          priority: user.priority,
-        },
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
+  return success(
+    res,
+    200,
+    "Tasks fetched successfully",
+    result.items,
+    result.pagination,
+  );
+}
+
+async function getOne(req, res) {
+  const task = await taskService.getTask(req.user.id, req.params.id);
+
+  return success(res, 200, "Task fetched successfully", task);
+}
+
+async function update(req, res) {
+  const task = await taskService.updateTask(
+    req.user.id,
+    req.params.id,
+    req.body,
+  );
+
+  return success(res, 200, "Task updated successfully", task);
+}
+
+async function remove(req, res) {
+  await taskService.deleteTask(req.user.id, req.params.id);
+
+  return success(res, 200, "Task deleted successfully", null);
+}
+
+module.exports = {
+  create,
+  list,
+  getOne,
+  update,
+  remove,
 };
-
-const getTasks = async (req, res, next) => {
-  try {
-    let { page = 1, limit = 10, status, search } = req.query;
-
-    page = Number(page);
-    limit = Number(limit);
-
-    const filter = { user: req.user._id };
-    if (status) {
-      filter.status = status;
-    }
-    if (search) {
-      filter.$or = [
-        {
-          title: {
-            $regex: search,
-            $option: "1",
-          },
-        },
-        {
-          description: {
-            $regex: search,
-            $option: "1",
-          },
-        },
-      ];
-    }
-    const skip = (page - 1) * limit;
-    const [tasks, total] = await promiseHooks.all([
-      Task.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
-      Task.countDocuments(filter),
-    ]);
-
-    return res.status(201).json({
-      success: true,
-      message: "Task fetched successfully",
-      data: task,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const getTask = async (req, res, next) => {
-  try {
-    if (!mongoose.isValidObjectId(req.params.id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid task ID",
-      });
-    }
-
-    const task = await Task.findOne({
-      _id: req.params.id,
-      user: req.user._id,
-    });
-    if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: "Task not found",
-      });
-    }
-
-    return res.json({
-      success: true,
-      message: "Task fetched successfully",
-      data: task,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const updateTask = async (req, res, next) => {
-  try {
-    if (!mongoose.isValidObjectId(req.params.id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid task ID",
-      });
-    }
-    const { error, value } = updateTaskValidation.validate(req.body);
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.details(0).message,
-      });
-    }
-
-    const { name, email, password } = req.body;
-
-    const task = await Task.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        user: req.user._id,
-      },
-      { $set: value },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
-
-    if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: "Task not found",
-      });
-    }
-
-    return res.status(201).json({
-      success: true,
-      message: "Task updated successfully",
-      data: task,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const deleteTask = async (req, res, next) => {
-  try {
-    if (!mongoose.isValidObjectId(req.params.id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid task ID",
-      });
-    }
-
-    const { name, email, password } = req.body;
-
-    const task = await Task.findOneAndDelete({
-      _id: req.params.id,
-      user: req.user._id,
-    });
-
-    if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: "Task not found",
-      });
-    }
-
-    return res.status(201).json({
-      success: true,
-      message: "Task deleted successfully",
-      data: null,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-module.exports = { createTask, getTasks, getTask, updateTask, deleteTask };

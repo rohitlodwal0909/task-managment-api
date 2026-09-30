@@ -1,102 +1,33 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const authService = require("../services/authService");
 
-const User = require("../models/User");
-const { registerValidation, loginValidation } = require("../validators/auth");
+const { success } = require("../utils/apiResponse");
 
-const register = async (req, res, next) => {
-  try {
-    const { error } = registerValidation.validate(req.body);
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.details(0).message,
-      });
-    }
+async function register(req, res) {
+  const result = await authService.register(req.body);
 
-    const { name, email, password } = req.body;
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: "Email already exites",
-      });
-    }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-    });
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
+  return success(res, 201, "User registered successfully", {
+    user: result.user,
+    token: result.token,
+  });
+}
 
-    return res.status(201).json({
-      success: true,
-      message: "User registers successfully",
-      data: {
-        token,
-        user: {
-          id: user._id,
-          name: user.name,
-          emai: user.email,
-        },
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
+async function login(req, res) {
+  const result = await authService.login(req.body);
+
+  return success(res, 200, "Login successful", {
+    user: result.user,
+    token: result.token,
+  });
+}
+
+async function me(req, res) {
+  const user = await authService.getProfile(req.user.id);
+
+  return success(res, 200, "Profile fetched successfully", user);
+}
+
+module.exports = {
+  register,
+  login,
+  me,
 };
-
-const login = async (req, res, next) => {
-  try {
-    const { error } = loginValidationValidation.validate(req.body);
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.details(0).message,
-      });
-    }
-
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password",
-      });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password",
-      });
-    }
-
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: "Login successfully",
-      data: {
-        token,
-        user: {
-          id: user._id,
-          name: user.name,
-          emai: user.email,
-        },
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-module.exports = { register, login };

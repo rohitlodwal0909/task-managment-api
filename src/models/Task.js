@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const { timeStamp } = require("node:console");
 
 const taskSchema = new mongoose.Schema(
   {
@@ -14,28 +13,50 @@ const taskSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: 200,
     },
+
     description: {
       type: String,
-      required: true,
       trim: true,
+      maxlength: 5000,
+      default: "",
     },
+
     priority: {
       type: String,
-      enum: ["low", "medium", "hign"],
+      enum: ["low", "medium", "high"],
       default: "medium",
+      index: true,
     },
+
     status: {
       type: String,
-      enum: ["pending", "inprogress", "completed"],
+      enum: ["pending", "in_progress", "completed"],
       default: "pending",
+      index: true,
     },
+
     dueDate: {
       type: Date,
       default: null,
+      index: true,
     },
   },
-  { timeStamp: true },
+  {
+    timestamps: true,
+  },
 );
+
+taskSchema.index({
+  user: 1,
+  status: 1,
+  createdAt: -1,
+});
+
+taskSchema.index({
+  user: 1,
+  dueDate: 1,
+});
 
 module.exports = mongoose.model("Task", taskSchema);

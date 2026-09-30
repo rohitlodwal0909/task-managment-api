@@ -1,19 +1,16 @@
 const jwt = require("jsonwebtoken");
-const jwtsecret = process.env.JWT_SECRET;
 
-const signToken = (userId) => {
-  return jwt.sign({
-    sub: userId.toString(),
+const { jwtSecret, jwtExpiresIn } = require("../config/env");
+
+function signToken(payload) {
+  return jwt.sign(payload, jwtSecret, {
+    expiresIn: jwtExpiresIn,
   });
-  (jwtsecret,
-    {
-      expiresIn: "1d",
-    });
-};
+}
 
-const verifyToken = (token) => {
-  return jwt.verify(token, jwtsecret);
-};
+function verifyToken(token) {
+  return jwt.verify(token, jwtSecret);
+}
 
 module.exports = {
   signToken,
